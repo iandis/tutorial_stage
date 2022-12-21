@@ -66,8 +66,7 @@ class TutorialStage extends StatefulWidget {
 
   /// Obtains [TickerProviderStateMixin] from nearest [TutorialStage]
   static TutorialTickerProvider tickerOf(BuildContext context) {
-    final TutorialTickerProvider? ticker =
-        context.findAncestorStateOfType<_TutorialStageState>();
+    final TutorialTickerProvider? ticker = _findAboveContext(context);
     assert(ticker != null, 'No TutorialStage found in the widget tree.');
     return ticker!;
   }
@@ -136,8 +135,9 @@ class TutorialStage extends StatefulWidget {
   }
 
   static _TutorialStageState? _findAboveContext(BuildContext context) {
-    final _TutorialStageScope? scope =
-        context.dependOnInheritedWidgetOfExactType<_TutorialStageScope>();
+    final _TutorialStageScope? scope = context
+        .getElementForInheritedWidgetOfExactType<_TutorialStageScope>()
+        ?.widget as _TutorialStageScope?;
     return scope?.state;
   }
 
