@@ -18,11 +18,11 @@ abstract class TutorialContent with Diagnosticable {
   ///
   /// This is called when this content is about to be removed
   /// {@endtemplate}
-  FutureOr<void> finish() {/* no-op */}
-  
+  FutureOr<void> finish() {}
+
   /// {@template tutorial_stage.TutorialContent.didFinish}
   /// This is called after [finish]
-  /// 
+  ///
   /// This should not be a [Future] method because this might be called
   /// before disposing the [Widget] created by [build]
   /// {@endtemplate}
