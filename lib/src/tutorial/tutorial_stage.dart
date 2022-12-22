@@ -1,7 +1,5 @@
 part of tutorial;
 
-typedef TutorialTickerProvider = TickerProviderStateMixin<TutorialStage>;
-
 class TutorialStage extends StatefulWidget {
   const TutorialStage({
     super.key,
@@ -62,13 +60,6 @@ class TutorialStage extends StatefulWidget {
   static TutorialController? maybeOf(BuildContext context) {
     final TutorialController? controller = _maybeOf(context);
     return controller;
-  }
-
-  /// Obtains [TickerProviderStateMixin] from nearest [TutorialStage]
-  static TutorialTickerProvider tickerOf(BuildContext context) {
-    final TutorialTickerProvider? ticker = _findAboveContext(context);
-    assert(ticker != null, 'No TutorialStage found in the widget tree.');
-    return ticker!;
   }
 
   /// Initiates tutorial [contents] for nearest [TutorialStage].
@@ -146,7 +137,6 @@ class TutorialStage extends StatefulWidget {
 }
 
 class _TutorialStageState extends State<TutorialStage>
-    with TutorialTickerProvider
     implements TutorialController {
   @override
   void didUpdateWidget(TutorialStage oldWidget) {

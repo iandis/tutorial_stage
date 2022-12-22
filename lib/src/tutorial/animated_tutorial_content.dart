@@ -84,7 +84,8 @@ class _AnimatedTutorialContentBuilder extends FinishableTutorialWidget {
 }
 
 class _AnimatedTutorialContentBuilderState
-    extends FinishableTutorialWidgetState<_AnimatedTutorialContentBuilder> {
+    extends FinishableTutorialWidgetState<_AnimatedTutorialContentBuilder>
+    with SingleTickerProviderStateMixin<_AnimatedTutorialContentBuilder> {
   late final AnimationController _animationController;
   late final ProxyAnimation _animation;
   late final ProxyAnimation _secondaryAnimation;
@@ -108,7 +109,7 @@ class _AnimatedTutorialContentBuilderState
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      vsync: TutorialStage.tickerOf(context),
+      vsync: this,
       duration: _transitionDuration,
       reverseDuration: _reverseTransitionDuration,
     );

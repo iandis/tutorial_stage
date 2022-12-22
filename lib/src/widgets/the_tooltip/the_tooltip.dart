@@ -157,7 +157,8 @@ class TheTooltip extends StatefulWidget {
   TheTooltipState createState() => TheTooltipState();
 }
 
-class TheTooltipState extends State<TheTooltip> {
+class TheTooltipState extends State<TheTooltip>
+    with SingleTickerProviderStateMixin<TheTooltip> {
   OverlayEntry? _overlayEntry;
   bool get _hasEntry => _overlayEntry != null;
 
@@ -167,7 +168,7 @@ class TheTooltipState extends State<TheTooltip> {
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      vsync: TutorialStage.tickerOf(context),
+      vsync: this,
       duration: widget.transitionDuration,
       reverseDuration: widget.reverseTransitionDuration,
     )..addStatusListener(_handleStatusChanged);
