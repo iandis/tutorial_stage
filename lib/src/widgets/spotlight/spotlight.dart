@@ -33,16 +33,24 @@ class Spotlight extends StatelessWidget {
   const Spotlight({
     super.key,
     required this.rect,
-    this.borderRadius = BorderRadius.zero,
-    this.backgroundColor = Colors.black45,
+    this.borderRadius,
+    this.backgroundColor,
   });
 
   final Rect rect;
-  final BorderRadius borderRadius;
-  final Color backgroundColor;
+  final BorderRadius? borderRadius;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final SpotlightTheme? theme = Theme.of(context).extension<SpotlightTheme>();
+    final BorderRadius borderRadius = this.borderRadius ??
+        theme?.borderRadius ??
+        SpotlightTheme.defaultBorderRadius;
+    final Color backgroundColor = this.backgroundColor ??
+        theme?.backgroundColor ??
+        SpotlightTheme.defaultBackgroundColor;
+
     return ClipPath(
       clipper: RRectClipper(
         rect: rect,
