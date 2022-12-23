@@ -199,6 +199,17 @@ class TheTooltipState extends State<TheTooltip>
     await _animationController.forward();
   }
 
+  /// Calls [showTooltip] using [SchedulerBinding.addPostFrameCallback]
+  Future<void> scheduleShowTooltip() {
+    final Completer<void> tooltipCallbackCompleter = Completer<void>();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      showTooltip()
+          .then(tooltipCallbackCompleter.complete)
+          .onError(tooltipCallbackCompleter.completeError);
+    });
+    return tooltipCallbackCompleter.future;
+  }
+
   Future<void> hideTooltip() async {
     await _animationController.reverse();
     _removeOverlayEntry();
