@@ -2,15 +2,15 @@ part of spotlight;
 
 class SpotlightTheme extends ThemeExtension<SpotlightTheme> {
   const SpotlightTheme({
-    this.borderRadius = defaultBorderRadius,
-    this.backgroundColor = defaultBackgroundColor,
+    this.borderRadius = _defaultBorderRadius,
+    this.backgroundColor = _defaultBackgroundColor,
   });
 
   final BorderRadius borderRadius;
   final Color backgroundColor;
 
-  static const BorderRadius defaultBorderRadius = BorderRadius.zero;
-  static const Color defaultBackgroundColor = Colors.black45;
+  static const BorderRadius _defaultBorderRadius = BorderRadius.zero;
+  static const Color _defaultBackgroundColor = Colors.black45;
 
   @override
   SpotlightTheme copyWith({
@@ -28,9 +28,9 @@ class SpotlightTheme extends ThemeExtension<SpotlightTheme> {
     if (other == null) return this;
     return SpotlightTheme(
       borderRadius: BorderRadius.lerp(borderRadius, other.borderRadius, t) ??
-          defaultBorderRadius,
+          _defaultBorderRadius,
       backgroundColor: Color.lerp(backgroundColor, other.backgroundColor, t) ??
-          defaultBackgroundColor,
+          _defaultBackgroundColor,
     );
   }
 }

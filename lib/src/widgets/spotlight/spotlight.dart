@@ -46,10 +46,10 @@ class Spotlight extends StatelessWidget {
     final SpotlightTheme? theme = Theme.of(context).extension<SpotlightTheme>();
     final BorderRadius borderRadius = this.borderRadius ??
         theme?.borderRadius ??
-        SpotlightTheme.defaultBorderRadius;
+        SpotlightTheme._defaultBorderRadius;
     final Color backgroundColor = this.backgroundColor ??
         theme?.backgroundColor ??
-        SpotlightTheme.defaultBackgroundColor;
+        SpotlightTheme._defaultBackgroundColor;
 
     return ClipPath(
       clipper: RRectClipper(
