@@ -4,14 +4,14 @@ class SpotlightStage extends StatelessWidget {
   const SpotlightStage({
     super.key,
     required this.rect,
-    this.borderRadius = BorderRadius.zero,
-    this.backgroundColor = Colors.black45,
+    this.borderRadius,
+    this.backgroundColor,
     this.children = const <Widget>[],
   });
 
   final Rect rect;
-  final BorderRadius borderRadius;
-  final Color backgroundColor;
+  final BorderRadius? borderRadius;
+  final Color? backgroundColor;
   final List<Widget> children;
 
   @override
