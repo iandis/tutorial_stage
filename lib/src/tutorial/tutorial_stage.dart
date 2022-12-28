@@ -145,18 +145,51 @@ class _TutorialStageState extends State<TutorialStage>
         oldWidget.shouldMaintainChildState == widget.shouldMaintainChildState) {
       return;
     }
-    _childEntry.opaque = widget.isChildOpaque;
-    _childEntry.maintainState = widget.shouldMaintainChildState;
+    _childEntry?.opaque = widget.isChildOpaque;
+    _childEntry?.maintainState = widget.shouldMaintainChildState;
+  }
+
+  void _debugCheckStageReadiness() {
+    assert(() {
+      if (_isStageReady && (_overlayKey == null || _childEntry == null)) {
+        throw FlutterError.fromParts(<DiagnosticsNode>[
+          ErrorSummary(
+            'Stage is ready but overlay key and/or child overlay entry is null',
+          ),
+          ErrorDescription(
+            'This is most likely a bug in this library. Please file an issue '
+            'with the reproducible steps.',
+          ),
+        ]);
+      }
+
+      if (!_isStageReady && (_overlayKey != null || _childEntry != null)) {
+        throw FlutterError.fromParts(<DiagnosticsNode>[
+          ErrorSummary(
+            'Stage is not ready but overlay key and/or child overlay entry is not null',
+          ),
+          ErrorDescription(
+            'This is most likely a bug in this library. Please file an issue '
+            'with the reproducible steps.',
+          ),
+        ]);
+      }
+
+      return true;
+    }());
   }
 
   @override
   Widget build(BuildContext context) {
+    _debugCheckStageReadiness();
     return _TutorialStageScope(
       state: this,
-      child: Overlay(
-        key: _overlayKey,
-        initialEntries: <OverlayEntry>[_childEntry],
-      ),
+      child: _isStageReady
+          ? Overlay(
+              key: _overlayKey,
+              initialEntries: <OverlayEntry>[_childEntry!],
+            )
+          : _child,
     );
   }
 
@@ -172,13 +205,12 @@ class _TutorialStageState extends State<TutorialStage>
     super.dispose();
   }
 
-  @pragma('vm:prefer-inline')
-  static void _debugCheckDisposed(_TutorialStageState instance) {
+  void _debugCheckDisposed() {
     assert(() {
-      if (!instance._debugDisposed) return true;
+      if (!_debugDisposed) return true;
       throw FlutterError.fromParts(<DiagnosticsNode>[
         ErrorSummary(
-          'TutorialController@${instance.hashCode} has been disposed.',
+          'TutorialController@$hashCode has been disposed.',
         ),
         ErrorDescription(
           'Make sure to never keep a copy of `TutorialController` and '
@@ -193,27 +225,27 @@ class _TutorialStageState extends State<TutorialStage>
   // Child Overlay
   /// Should only be enabled when [_currentContent] is null
   bool _isChildEnabled = true;
-  late final OverlayEntry _childEntry = OverlayEntry(
-    opaque: widget.isChildOpaque,
-    maintainState: widget.shouldMaintainChildState,
-    builder: _buildChild,
-  );
+  OverlayEntry? _childEntry;
 
+  late final Widget _child = KeyedSubtree(
+    key: GlobalKey(),
+    child: widget.child,
+  );
   Widget _buildChild(BuildContext context) {
     return IgnorePointer(
       ignoring: !_isChildEnabled,
-      child: widget.child,
+      child: _child,
     );
   }
 
   void _updateChild({required bool isEnabled}) {
     if (_isChildEnabled == isEnabled) return;
     _isChildEnabled = isEnabled;
-    _childEntry.markNeedsBuild();
+    _childEntry?.markNeedsBuild();
   }
 
   void _initContents(List<TutorialContent> contents) {
-    _debugCheckDisposed(this);
+    _debugCheckDisposed();
     if (_currentContent != null) {
       _finish();
     }
@@ -222,6 +254,30 @@ class _TutorialStageState extends State<TutorialStage>
     assert(_currentContentOverlay == null);
     assert(_isChildEnabled);
     _contents = contents;
+    _prepareStage();
+  }
+
+  bool _isStageReady = false;
+  void _prepareStage() {
+    if (_isStageReady) return;
+    setState(() {
+      _overlayKey = GlobalKey<OverlayState>();
+      _childEntry = OverlayEntry(
+        opaque: widget.isChildOpaque,
+        maintainState: widget.shouldMaintainChildState,
+        builder: _buildChild,
+      );
+      _isStageReady = true;
+    });
+  }
+
+  void _destroyStage() {
+    if (!_isStageReady) return;
+    setState(() {
+      _overlayKey = null;
+      _childEntry = null;
+      _isStageReady = false;
+    });
   }
 
   // Tutorial Content
@@ -231,8 +287,8 @@ class _TutorialStageState extends State<TutorialStage>
   OverlayEntry? _currentContentOverlay;
 
   // Tutorial Overlay
-  final GlobalKey<OverlayState> _overlayKey = GlobalKey<OverlayState>();
-  OverlayState? get _overlay => _overlayKey.currentState;
+  GlobalKey<OverlayState>? _overlayKey;
+  OverlayState? get _overlay => _overlayKey?.currentState;
 
   Widget _buildContent(BuildContext context) {
     assert(_currentContent != null);
@@ -411,22 +467,26 @@ class _TutorialStageState extends State<TutorialStage>
 
   @override
   Future<void> start({Object? at}) async {
-    _debugCheckDisposed(this);
+    _debugCheckDisposed();
     if (_isChanging || _currentContentIndex != -1) {
       return;
     }
 
     _toggleIsChanging();
-    await _beginChangeContent(
-      (_) => _getIdentifierIndex(at) ?? 0,
-      TutorialStateType.started,
-    );
+    final Completer<void> startCompleter = Completer<void>();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _beginChangeContent(
+        (_) => _getIdentifierIndex(at) ?? 0,
+        TutorialStateType.started,
+      ).then(startCompleter.complete).onError(startCompleter.completeError);
+    });
+    await startCompleter.future;
     _toggleIsChanging();
   }
 
   @override
   Future<void> next({Object? to}) async {
-    _debugCheckDisposed(this);
+    _debugCheckDisposed();
     if (_currentContentIndex == _contents.length - 1) {
       return finish();
     }
@@ -444,7 +504,7 @@ class _TutorialStageState extends State<TutorialStage>
 
   @override
   Future<void> pause() async {
-    _debugCheckDisposed(this);
+    _debugCheckDisposed();
     if (_isChanging || _currentContentIndex == -1 || _contents.isEmpty) {
       return;
     }
@@ -461,7 +521,7 @@ class _TutorialStageState extends State<TutorialStage>
 
   @override
   Future<void> previous({Object? to}) async {
-    _debugCheckDisposed(this);
+    _debugCheckDisposed();
     if (_isChanging || _currentContentIndex == 0) {
       return;
     }
@@ -490,7 +550,7 @@ class _TutorialStageState extends State<TutorialStage>
 
   @override
   Future<void> finish() async {
-    _debugCheckDisposed(this);
+    _debugCheckDisposed();
     if (_isChanging || _currentContentIndex == -1) {
       return;
     }
@@ -499,18 +559,20 @@ class _TutorialStageState extends State<TutorialStage>
     await _finishCurrentContent();
     _didFinishCurrentContent();
     _finish();
+    _destroyStage();
     _toggleIsChanging();
   }
 
   @override
   void reset() {
-    _debugCheckDisposed(this);
+    _debugCheckDisposed();
     _removeCurrentContentOverlay();
     assert(_currentContentOverlay == null);
     _currentContent = null;
     _currentContentIndex = -1;
     _contents = const <TutorialContent>[];
     if (kDebugMode) _currentState = null;
+    _destroyStage();
     _updateChild(isEnabled: true);
   }
 
