@@ -47,19 +47,13 @@ class Spotlight extends StatelessWidget {
     final BorderRadius borderRadius = this.borderRadius ??
         theme?.borderRadius ??
         SpotlightTheme._defaultBorderRadius;
-    final Color backgroundColor = this.backgroundColor ??
-        theme?.backgroundColor ??
-        SpotlightTheme._defaultBackgroundColor;
 
     return ClipPath(
       clipper: RRectClipper(
         rect: rect,
         borderRadius: borderRadius,
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints.expand(),
-        child: ColoredBox(color: backgroundColor),
-      ),
+      child: SpotlightSkrim(backgroundColor: backgroundColor),
     );
   }
 }
