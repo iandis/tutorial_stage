@@ -18,6 +18,16 @@ class RenderBoxPosition {
     );
   }
 
+  factory RenderBoxPosition.fromSize(Size size) {
+    const Offset offset = Offset.zero;
+    final Rect rect = offset & size;
+    return RenderBoxPosition._(
+      offset: offset,
+      size: size,
+      rect: rect,
+    );
+  }
+
   final Offset offset;
   final Size size;
   final Rect rect;

@@ -9,6 +9,10 @@ extension BuildContextExt on BuildContext {
     if (renderBox is! RenderBox) return null;
     return RenderBoxPosition._fromRenderBox(renderBox);
   }
+
+  RenderBoxPosition get mediaQueryBoxPosition {
+    return RenderBoxPosition.fromSize(MediaQuery.of(this).size);
+  }
 }
 
 extension GlobalKeyExt on GlobalKey {
