@@ -35,11 +35,13 @@ class Spotlight extends StatelessWidget {
     required this.rect,
     this.borderRadius,
     this.backgroundColor,
+    this.onTap,
   });
 
   final Rect rect;
   final BorderRadius? borderRadius;
   final Color? backgroundColor;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -48,12 +50,16 @@ class Spotlight extends StatelessWidget {
         theme?.borderRadius ??
         SpotlightTheme._defaultBorderRadius;
 
-    return ClipPath(
-      clipper: RRectClipper(
-        rect: rect,
-        borderRadius: borderRadius,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ClipPath(
+        clipper: RRectClipper(
+          rect: rect,
+          borderRadius: borderRadius,
+        ),
+        child: SpotlightSkrim(backgroundColor: backgroundColor),
       ),
-      child: SpotlightSkrim(backgroundColor: backgroundColor),
     );
   }
 }
