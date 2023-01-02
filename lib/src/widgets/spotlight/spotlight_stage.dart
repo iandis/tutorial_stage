@@ -14,7 +14,7 @@ class SpotlightStage extends StatelessWidget {
   final BorderRadius? borderRadius;
   final Color? backgroundColor;
 
-  /// Called when user taps on the spotlight and its skrim area
+  /// Called when user taps on the spotlight skrim area
   final VoidCallback? onTap;
 
   final List<Widget> children;

@@ -50,15 +50,14 @@ class Spotlight extends StatelessWidget {
         theme?.borderRadius ??
         SpotlightTheme._defaultBorderRadius;
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: ClipPath(
-        clipper: RRectClipper(
-          rect: rect,
-          borderRadius: borderRadius,
-        ),
-        child: SpotlightSkrim(backgroundColor: backgroundColor),
+    return ClipPath(
+      clipper: RRectClipper(
+        rect: rect,
+        borderRadius: borderRadius,
+      ),
+      child: SpotlightSkrim(
+        backgroundColor: backgroundColor,
+        onTap: onTap,
       ),
     );
   }

@@ -4,10 +4,12 @@ class SpotlightSkrim extends StatelessWidget {
   const SpotlightSkrim({
     super.key,
     this.backgroundColor,
+    this.onTap,
     this.child,
   });
 
   final Color? backgroundColor;
+  final VoidCallback? onTap;
   final Widget? child;
 
   @override
@@ -17,11 +19,15 @@ class SpotlightSkrim extends StatelessWidget {
         theme?.backgroundColor ??
         SpotlightTheme._defaultBackgroundColor;
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints.expand(),
-      child: ColoredBox(
-        color: backgroundColor,
-        child: child,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints.expand(),
+        child: ColoredBox(
+          color: backgroundColor,
+          child: child,
+        ),
       ),
     );
   }
