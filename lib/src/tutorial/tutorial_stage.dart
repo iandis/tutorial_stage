@@ -1,5 +1,14 @@
 part of tutorial;
 
+/// The callback before changing tutorial content. This will be called for every
+/// [TutorialStateType] except [TutorialStateType.finished] and [TutorialStateType.paused]
+///
+/// The callback should return a non-nullable identifier to change the next tutorial
+/// content
+typedef TutorialStateChangeCallback = Object? Function(TutorialState nextState);
+
+typedef StageBuilder = Widget Function(BuildContext context, Widget stage);
+
 class TutorialStage extends StatefulWidget {
   const TutorialStage({
     super.key,
@@ -64,9 +73,17 @@ class TutorialStage extends StatefulWidget {
 
   /// Initiates tutorial [contents] for nearest [TutorialStage].
   /// This will finish and clear any running tutorial if any.
+  ///
+  /// [builder] is a widget builder that will be built on top of
+  /// the [TutorialStage]'s overlay.
+  ///
+  /// [onChange] callback can be used for pre-changing tutorial, e.g. skip to
+  /// a different content under different conditions.
   static TutorialController build({
     required BuildContext context,
     required List<TutorialContent> contents,
+    StageBuilder? builder,
+    TutorialStateChangeCallback? onChange,
   }) {
     assert(() {
       final Set<Object> identifiers = <Object>{};
@@ -85,7 +102,7 @@ class TutorialStage extends StatefulWidget {
     }());
     final _TutorialStageState? state = _maybeOf(context);
     assert(state != null, 'No TutorialStage found in the widget tree');
-    return state!.._initContents(contents);
+    return state!.._initContents(contents, builder, onChange);
   }
 
   static _TutorialStageState? _maybeOf(
@@ -182,14 +199,26 @@ class _TutorialStageState extends State<TutorialStage>
   @override
   Widget build(BuildContext context) {
     _debugCheckStageReadiness();
+    Widget result;
+    if (!_isStageReady) {
+      result = _child;
+    } else {
+      final Widget stage = Overlay(
+        key: _overlayKey,
+        initialEntries: <OverlayEntry>[_childEntry!],
+      );
+      if (_isOngoing && _stageBuilder != null) {
+        result = Builder(
+          builder: (BuildContext context) => _stageBuilder!(context, stage),
+        );
+      } else {
+        result = stage;
+      }
+    }
+
     return _TutorialStageScope(
       state: this,
-      child: _isStageReady
-          ? Overlay(
-              key: _overlayKey,
-              initialEntries: <OverlayEntry>[_childEntry!],
-            )
-          : _child,
+      child: result,
     );
   }
 
@@ -244,7 +273,11 @@ class _TutorialStageState extends State<TutorialStage>
     _childEntry?.markNeedsBuild();
   }
 
-  void _initContents(List<TutorialContent> contents) {
+  void _initContents(
+    List<TutorialContent> contents,
+    StageBuilder? builder,
+    TutorialStateChangeCallback? onChange,
+  ) {
     _debugCheckDisposed();
     if (_currentContent != null) {
       _finish();
@@ -254,8 +287,12 @@ class _TutorialStageState extends State<TutorialStage>
     assert(_currentContentOverlay == null);
     assert(_isChildEnabled);
     _contents = contents;
+    _stageBuilder = builder;
+    _onChange = onChange;
     _prepareStage();
   }
+
+  StageBuilder? _stageBuilder;
 
   bool _isStageReady = false;
   void _prepareStage() {
@@ -277,6 +314,7 @@ class _TutorialStageState extends State<TutorialStage>
       _overlayKey = null;
       _childEntry = null;
       _isStageReady = false;
+      _stageBuilder = null;
     });
   }
 
@@ -465,6 +503,21 @@ class _TutorialStageState extends State<TutorialStage>
     _isChanging = !_isChanging;
   }
 
+  TutorialStateChangeCallback? _onChange;
+
+  Object? _getChangedNextIdentifier(
+    TutorialStateType type,
+    Object? originalNextIdentifier,
+  ) {
+    final TutorialState nextState = TutorialState(
+      type: type,
+      identifier: originalNextIdentifier,
+    );
+    return _onChange?.call(nextState) ?? originalNextIdentifier;
+  }
+
+  bool _isOngoing = false;
+
   @override
   Future<void> start({Object? at}) async {
     _debugCheckDisposed();
@@ -473,10 +526,18 @@ class _TutorialStageState extends State<TutorialStage>
     }
 
     _toggleIsChanging();
+    setState(() {
+      _isOngoing = true;
+      _childEntry?.markNeedsBuild();
+    });
     final Completer<void> startCompleter = Completer<void>();
     SchedulerBinding.instance.addPostFrameCallback((_) {
+      final Object? identifier = _getChangedNextIdentifier(
+        TutorialStateType.started,
+        at,
+      );
       _beginChangeContent(
-        (_) => _getIdentifierIndex(at) ?? 0,
+        (_) => _getIdentifierIndex(identifier) ?? 0,
         TutorialStateType.started,
       ).then(startCompleter.complete).onError(startCompleter.completeError);
     });
@@ -493,9 +554,17 @@ class _TutorialStageState extends State<TutorialStage>
     if (_isChanging) return;
 
     _toggleIsChanging();
+    final Object? identifier = _getChangedNextIdentifier(
+      TutorialStateType.movedNext,
+      to,
+    );
     await _beginChangeContent(
       (int currentIndex) =>
-          _validateIdentifierIndex(_getIdentifierIndex(to), currentIndex, 1) ??
+          _validateIdentifierIndex(
+            _getIdentifierIndex(identifier),
+            currentIndex,
+            1,
+          ) ??
           currentIndex + 1,
       TutorialStateType.movedNext,
     );
@@ -527,9 +596,17 @@ class _TutorialStageState extends State<TutorialStage>
     }
 
     _toggleIsChanging();
+    final Object? identifier = _getChangedNextIdentifier(
+      TutorialStateType.movedPrevious,
+      to,
+    );
     await _beginChangeContent(
       (int currentIndex) =>
-          _validateIdentifierIndex(_getIdentifierIndex(to), currentIndex, -1) ??
+          _validateIdentifierIndex(
+            _getIdentifierIndex(identifier),
+            currentIndex,
+            -1,
+          ) ??
           currentIndex - 1,
       TutorialStateType.movedPrevious,
     );
@@ -559,7 +636,9 @@ class _TutorialStageState extends State<TutorialStage>
     await _finishCurrentContent();
     _didFinishCurrentContent();
     _finish();
+    _onChange = null;
     _destroyStage();
+    setState(() => _isOngoing = false);
     _toggleIsChanging();
   }
 
@@ -572,7 +651,9 @@ class _TutorialStageState extends State<TutorialStage>
     _currentContentIndex = -1;
     _contents = const <TutorialContent>[];
     if (kDebugMode) _currentState = null;
+    _onChange = null;
     _destroyStage();
+    setState(() => _isOngoing = false);
     _updateChild(isEnabled: true);
   }
 
