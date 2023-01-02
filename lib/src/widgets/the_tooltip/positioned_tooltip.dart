@@ -36,6 +36,7 @@ class PositionedTooltip extends SingleChildRenderObjectWidget {
     required this.targetSize,
     required this.target,
     required this.offset,
+    this.childAlignment = 0.0,
     required this.preferredDirection,
     required this.offsetToTarget,
     required this.borderRadius,
@@ -56,6 +57,8 @@ class PositionedTooltip extends SingleChildRenderObjectWidget {
   final Size targetSize;
 
   final double offset;
+
+  final double childAlignment;
 
   final AxisDirection preferredDirection;
 
@@ -84,6 +87,7 @@ class PositionedTooltip extends SingleChildRenderObjectWidget {
     return RenderPositionedTooltip(
       margin: margin,
       offset: offset,
+      childAlignment: childAlignment,
       target: target,
       borderRadius: borderRadius,
       tailLength: tailLength,
@@ -107,6 +111,7 @@ class PositionedTooltip extends SingleChildRenderObjectWidget {
     renderObject
       ..margin = margin
       ..offset = offset
+      ..childAlignment = childAlignment
       ..target = target
       ..borderRadius = borderRadius
       ..tailLength = tailLength
@@ -128,6 +133,7 @@ class PositionedTooltip extends SingleChildRenderObjectWidget {
     properties.add(DiagnosticsProperty<Offset>('target', target));
     properties.add(DiagnosticsProperty<Size>('targetSize', targetSize));
     properties.add(DoubleProperty('offset', offset));
+    properties.add(DoubleProperty('childAlignment', childAlignment));
     properties.add(
       DiagnosticsProperty<AxisDirection>(
         'preferredDirection',
@@ -163,6 +169,7 @@ class RenderPositionedTooltip extends RenderShiftedBox
     RenderBox? child,
     required EdgeInsetsGeometry margin,
     required double offset,
+    double childAlignment = 0.0,
     required Offset target,
     required BorderRadiusGeometry borderRadius,
     required double tailLength,
@@ -177,6 +184,7 @@ class RenderPositionedTooltip extends RenderShiftedBox
     required ScrollPosition? scrollPosition,
   })  : _margin = margin,
         _offset = offset,
+        _childAlignment = childAlignment,
         _target = target,
         _borderRadius = borderRadius,
         _tailLength = tailLength,
@@ -206,6 +214,14 @@ class RenderPositionedTooltip extends RenderShiftedBox
   set offset(double value) {
     if (_offset == value) return;
     _offset = value;
+    markNeedsLayout();
+  }
+
+  double get childAlignment => _childAlignment;
+  double _childAlignment;
+  set childAlignment(double value) {
+    if (_childAlignment == value) return;
+    _childAlignment = value;
     markNeedsLayout();
   }
 
@@ -341,12 +357,14 @@ class RenderPositionedTooltip extends RenderShiftedBox
     return maybeChild.getDryLayout(quadrantConstraints);
   }
 
+  late Offset _quadrantOffset;
+
   @override
   void performLayout() {
-    final maybeChild = child;
-    final resolvedMargin = margin.resolve(textDirection);
+    final RenderBox? child = this.child;
+    final EdgeInsets resolvedMargin = margin.resolve(textDirection);
 
-    if (maybeChild == null) {
+    if (child == null) {
       size = constraints.constrain(resolvedMargin.collapsedSize);
       return;
     }
@@ -355,10 +373,10 @@ class RenderPositionedTooltip extends RenderShiftedBox
     /// get child size via intrinsics :
     // final childSize = _child.getDryLayout(constraints.deflate(margin));
 
-    final deflated = constraints.deflate(resolvedMargin);
-    final width = maybeChild.computeMinIntrinsicWidth(deflated.maxHeight);
-    final height = maybeChild.computeMinIntrinsicHeight(deflated.maxWidth);
-    final childSize = Size(width, height);
+    final BoxConstraints deflated = constraints.deflate(resolvedMargin);
+    final double width = child.computeMinIntrinsicWidth(deflated.maxHeight);
+    final double height = child.computeMinIntrinsicHeight(deflated.maxWidth);
+    final Size childSize = Size(width, height);
 
     axisDirection = _getAxisDirection(
       targetSize: targetSize,
@@ -370,32 +388,32 @@ class RenderPositionedTooltip extends RenderShiftedBox
       childSize: childSize,
       scrollPosition: scrollPosition,
     );
-    final childParentData = maybeChild.parentData as BoxParentData;
-    var quadrantConstraints = _getQuadrantConstraints(
+    final BoxParentData childParentData = child.parentData as BoxParentData;
+    BoxConstraints quadrantConstraints = _getQuadrantConstraints(
       constraints,
       axisDirection,
       scrollPosition,
       resolvedMargin,
     );
 
-    maybeChild.layout(
+    child.layout(
       quadrantConstraints,
       parentUsesSize: true,
     );
 
-    final shrinkWrapWidth = constraints.maxWidth == double.infinity;
-    final shrinkWrapHeight = constraints.maxHeight == double.infinity;
+    final bool shrinkWrapWidth = constraints.maxWidth == double.infinity;
+    final bool shrinkWrapHeight = constraints.maxHeight == double.infinity;
 
     size = constraints.constrain(
       Size(
-        shrinkWrapWidth ? maybeChild.size.width : double.infinity,
-        shrinkWrapHeight ? maybeChild.size.height : double.infinity,
+        shrinkWrapWidth ? child.size.width : double.infinity,
+        shrinkWrapHeight ? child.size.height : double.infinity,
       ),
     );
 
-    final quadrantOffset = getPositionDependentOffset(
+    _quadrantOffset = getPositionDependentOffset(
       axisDirection: axisDirection,
-      childSize: maybeChild.size,
+      childSize: child.size,
       margin: resolvedMargin,
       offsetAndTail: offsetAndTailLength,
       size: size,
@@ -404,58 +422,94 @@ class RenderPositionedTooltip extends RenderShiftedBox
       scrollPosition: scrollPosition,
     );
 
-    childParentData.offset = quadrantOffset;
+    childParentData.offset = getTranslatedQuadrantOffset(
+      axisDirection: axisDirection,
+      quadrantOffset: _quadrantOffset,
+      childSize: childSize,
+      translation: childAlignment,
+    );
+  }
+
+  static Offset getTranslatedQuadrantOffset({
+    required AxisDirection axisDirection,
+    required Offset quadrantOffset,
+    required Size childSize,
+    required double translation,
+  }) {
+    final double boundedTranslation = math.max(
+      -1.0,
+      math.min(1.0, translation),
+    );
+    switch (axisDirection) {
+      case AxisDirection.right:
+      case AxisDirection.left:
+        final double maxTranslationY = 0.5 * childSize.height;
+        return quadrantOffset.translate(
+          0.0,
+          boundedTranslation * maxTranslationY,
+        );
+
+      case AxisDirection.up:
+      case AxisDirection.down:
+        final double maxTranslationX = 0.5 * childSize.width;
+        return quadrantOffset.translate(
+          boundedTranslation * maxTranslationX,
+          0.0,
+        );
+    }
   }
 
   @override
   void paint(PaintingContext context, Offset offset) {
     // TODO: add debug paint for overflows
 
-    final maybeChild = child;
+    final RenderBox? child = this.child;
+    if (child == null) return;
 
-    if (maybeChild != null) {
-      final childParentData = maybeChild.parentData! as BoxParentData;
-      final parentDataOffset = childParentData.offset;
-      final paint = Paint()
-        ..color = backgroundColor
-        ..style = PaintingStyle.fill;
-      final path = Path();
-      final radius = borderRadius.resolve(textDirection);
-      final rect = (offset + parentDataOffset) & maybeChild.size;
+    final BoxParentData childParentData = child.parentData! as BoxParentData;
+    final Offset parentDataOffset = childParentData.offset;
+    final Paint paint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.fill;
+    final Path path = Path();
+    final BorderRadius radius = borderRadius.resolve(textDirection);
+    final Offset childOffset = offset + parentDataOffset;
+    final Rect rect = childOffset & child.size;
 
-      // TODO: Currently, I don't think this is triggered by an empty child. Dunno
-      /// why this is the case or if this is a feature.
-      if (!rect.isEmpty) {
-        path
-          ..addRRect(
-            RRect.fromRectAndCorners(
-              rect,
-              topLeft: radius.topLeft,
-              topRight: radius.topRight,
-              bottomLeft: radius.bottomLeft,
-              bottomRight: radius.bottomRight,
-            ),
-          )
-          ..addPath(
-            _paintTail(
-              rect: rect,
-              radius: radius,
-            ),
-            Offset.zero,
-          );
-
-        // TODO: What do I do about the blurSigma property on shadow?
-        context.canvas.drawShadow(
-          path.shift(shadow.offset),
-          shadow.color,
-          elevation,
-          false,
+    // TODO: Currently, I don't think this is triggered by an empty child. Dunno
+    /// why this is the case or if this is a feature.
+    if (!rect.isEmpty) {
+      // We need the original offset where it's not been altered by childOffset
+      final Rect rectForTail = (offset + _quadrantOffset) & child.size;
+      path
+        ..addRRect(
+          RRect.fromRectAndCorners(
+            rect,
+            topLeft: radius.topLeft,
+            topRight: radius.topRight,
+            bottomLeft: radius.bottomLeft,
+            bottomRight: radius.bottomRight,
+          ),
+        )
+        ..addPath(
+          _paintTail(
+            rect: rectForTail,
+            radius: radius,
+          ),
+          Offset.zero,
         );
-        context.canvas.drawPath(path, paint);
-      }
+
+      // TODO: What do I do about the blurSigma property on shadow?
+      context.canvas.drawShadow(
+        path.shift(shadow.offset),
+        shadow.color,
+        elevation,
+        false,
+      );
+      context.canvas.drawPath(path, paint);
     }
 
-    super.paint(context, offset);
+    context.paintChild(child, childOffset);
   }
 
   /// Constrains where the box is allowed to take space by

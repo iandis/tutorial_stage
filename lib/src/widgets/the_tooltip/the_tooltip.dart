@@ -36,6 +36,7 @@ class TheTooltip extends StatefulWidget {
     this.preferredDirection = AxisDirection.down,
     this.margin = const EdgeInsets.all(8.0),
     this.offset = 0.0,
+    this.contentAlignment = 0.0,
     this.elevation = 4.0,
     this.borderRadius = const BorderRadius.all(Radius.circular(6)),
     this.tailLength = 16.0,
@@ -61,7 +62,16 @@ class TheTooltip extends StatefulWidget {
 
   final EdgeInsetsGeometry margin;
 
+  /// {@template tutorial_stage.TheTooltip.offset}
+  /// The distance between content + tail and [child]
+  /// {@endtemplate}
   final double offset;
+
+  /// {@template tutorial_stage.TheTooltip.contentAlignment}
+  /// The position of [content] along the tail's axis.
+  /// It ranges from -1.0 to 1.0, where 0.0 is the center.
+  /// {@endtemplate}
+  final double contentAlignment;
 
   final double elevation;
 
@@ -279,6 +289,7 @@ class TheTooltipState extends State<TheTooltip>
             targetSize: targetInfo.size,
             target: targetInfo.target,
             offset: widget.offset,
+            childAlignment: widget.contentAlignment,
             preferredDirection: widget.preferredDirection,
             offsetToTarget: targetInfo.offsetToTarget,
             borderRadius: widget.borderRadius,
@@ -308,18 +319,14 @@ class _TargetInformation {
   factory _TargetInformation.from(BuildContext? context) {
     final RenderObject? box = context?.findRenderObject();
     if (box is! RenderBox) return _TargetInformation.zero;
-    final Size size = box.getDryLayout(
-      const BoxConstraints.tightForFinite(),
-    );
-    final Offset target = box.localToGlobal(
-      box.size.center(Offset.zero),
-    );
+    final Size size = box.size;
+    final Offset target = box.localToGlobal(Offset.zero);
     // TODO: Instead of this, change the alignment on
     // [CompositedTransformFollower]. That way we can allow a user configurable
     // alignment on where the tooltip ends up.
     final Offset offsetToTarget = Offset(
-      -target.dx + box.size.width / 2,
-      -target.dy + box.size.height / 2,
+      -target.dx + size.width / 2,
+      -target.dy + size.height / 2,
     );
     return _TargetInformation(
       size: size,
