@@ -29,14 +29,15 @@ typedef TheTooltipKey = GlobalKey<TheTooltipState>;
 class TheTooltip extends StatefulWidget {
   const TheTooltip({
     super.key,
+    this.targetKey,
+    this.alignment = Alignment.center,
     this.transitionDuration = const Duration(milliseconds: 150),
     this.transitionBuilder = defaultTransitionBuilder,
     this.reverseTransitionDuration = const Duration(milliseconds: 75),
     this.reverseTransitionBuilder = defaultReverseTransitionBuilder,
-    this.preferredDirection = AxisDirection.down,
+    this.direction = AxisDirection.down,
     this.margin = const EdgeInsets.all(8.0),
-    this.offset = 0.0,
-    this.contentAlignment = 0.0,
+    this.position = 0.0,
     this.elevation = 4.0,
     this.borderRadius = const BorderRadius.all(Radius.circular(6)),
     this.tailLength = 16.0,
@@ -45,12 +46,15 @@ class TheTooltip extends StatefulWidget {
     this.backgroundColor,
     this.textDirection = TextDirection.ltr,
     this.shadow,
-    this.showWhenUnlinked = false,
     required this.content,
     required this.child,
   });
 
-  final AxisDirection preferredDirection;
+  final GlobalKey? targetKey;
+
+  final Alignment alignment;
+
+  final AxisDirection direction;
 
   final Duration transitionDuration;
 
@@ -62,16 +66,17 @@ class TheTooltip extends StatefulWidget {
 
   final EdgeInsetsGeometry margin;
 
-  /// {@template tutorial_stage.TheTooltip.offset}
-  /// The distance between content + tail and [child]
-  /// {@endtemplate}
-  final double offset;
-
-  /// {@template tutorial_stage.TheTooltip.contentAlignment}
+  /// {@template tutorial_stage.TheTooltip.position}
   /// The position of [content] along the tail's axis.
   /// It ranges from -1.0 to 1.0, where 0.0 is the center.
+  ///
+  /// When [direction] is vertical, the greater [position] value is,
+  /// the more [content] is positioned to the right.
+  ///
+  /// When [direction] is horizontal, the greater [position] value is,
+  /// the more [content] is positioned to the bottom.
   /// {@endtemplate}
-  final double contentAlignment;
+  final double position;
 
   final double elevation;
 
@@ -89,14 +94,12 @@ class TheTooltip extends StatefulWidget {
 
   final Shadow? shadow;
 
-  final bool showWhenUnlinked;
-
   /// The content of the tooltip. Content must be collapsed so it does not
   /// exceed it's constraints. The content's intrinsic `size` is used to first
   /// to get the quadrant of the tooltip. It is then layed out with those
   /// quadrant constraints limiting its size.
   ///
-  /// Note that [preferredDirection] is not the final [AxisDirection]
+  /// Note that [direction] is not the final [AxisDirection]
   /// but may be placed opposite.
   final Widget content;
 
@@ -233,19 +236,48 @@ class TheTooltipState extends State<TheTooltip>
     super.deactivate();
   }
 
-  final LayerLink _layerLink = LayerLink();
   final GlobalKey _childKey = GlobalKey();
+  GlobalKey get _targetKey => widget.targetKey ?? _childKey;
 
   @override
   Widget build(BuildContext context) {
     assert(Overlay.of(context, debugRequiredFor: widget) != null);
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: KeyedSubtree(
-        key: _childKey,
-        child: widget.child,
-      ),
+    return KeyedSubtree(
+      key: _childKey,
+      child: widget.child,
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant TheTooltip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_shouldUpdateTooltipOverlay(oldWidget)) {
+      _scheduleUpdateOverlayEntry();
+    }
+  }
+
+  bool _shouldUpdateTooltipOverlay(TheTooltip oldWidget) {
+    return oldWidget.alignment != widget.alignment ||
+        oldWidget.backgroundColor != widget.backgroundColor ||
+        oldWidget.borderRadius != widget.borderRadius ||
+        oldWidget.direction != widget.direction ||
+        oldWidget.elevation != widget.elevation ||
+        oldWidget.margin != widget.margin ||
+        oldWidget.position != widget.position ||
+        oldWidget.shadow != widget.shadow ||
+        oldWidget.tailBaseWidth != widget.tailBaseWidth ||
+        oldWidget.tailLength != widget.tailLength ||
+        oldWidget.textDirection != widget.textDirection;
+  }
+
+  void _scheduleUpdateOverlayEntry() {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      final OverlayEntry? overlayEntry = _overlayEntry;
+      if (!mounted || overlayEntry == null || !overlayEntry.mounted) {
+        return;
+      }
+      overlayEntry.markNeedsBuild();
+    });
   }
 
   void _createOverlayEntry() {
@@ -260,8 +292,9 @@ class TheTooltipState extends State<TheTooltip>
   }
 
   Widget _buildEntry(BuildContext context) {
-    final _TargetInformation targetInfo =
-        _TargetInformation.from(_childKey.currentContext);
+    final RenderBoxPosition boxPosition =
+        _targetKey.boxPosition ?? RenderBoxPosition.zero;
+
     final ThemeData theme = Theme.of(context);
     final Shadow defaultShadow = Shadow(
       offset: Offset.zero,
@@ -274,76 +307,29 @@ class TheTooltipState extends State<TheTooltip>
       child: widget.content,
     );
 
-    return CompositedTransformFollower(
-      showWhenUnlinked: widget.showWhenUnlinked,
-      offset: targetInfo.offsetToTarget,
-      link: _layerLink,
-      child: DualTransitionBuilder(
-        animation: _animationController,
-        forwardBuilder: widget.transitionBuilder,
-        reverseBuilder: widget.reverseTransitionBuilder,
-        child: Directionality(
+    return DualTransitionBuilder(
+      animation: _animationController,
+      forwardBuilder: widget.transitionBuilder,
+      reverseBuilder: widget.reverseTransitionBuilder,
+      child: Directionality(
+        textDirection: widget.textDirection,
+        child: SimpleTooltip(
+          rect: boxPosition.rect,
+          alignment: widget.alignment,
+          direction: widget.direction,
+          margin: widget.margin,
+          position: widget.position,
+          borderRadius: widget.borderRadius,
+          tailBaseWidth: widget.tailBaseWidth,
+          tailLength: widget.tailLength,
+          tailBuilder: widget.tailBuilder,
+          backgroundColor: widget.backgroundColor ?? theme.cardColor,
           textDirection: widget.textDirection,
-          child: PositionedTooltip(
-            margin: widget.margin,
-            targetSize: targetInfo.size,
-            target: targetInfo.target,
-            offset: widget.offset,
-            childAlignment: widget.contentAlignment,
-            preferredDirection: widget.preferredDirection,
-            offsetToTarget: targetInfo.offsetToTarget,
-            borderRadius: widget.borderRadius,
-            tailBaseWidth: widget.tailBaseWidth,
-            tailLength: widget.tailLength,
-            tailBuilder: widget.tailBuilder,
-            backgroundColor: widget.backgroundColor ?? theme.cardColor,
-            textDirection: widget.textDirection,
-            shadow: widget.shadow ?? defaultShadow,
-            elevation: widget.elevation,
-            scrollPosition: null,
-            child: content,
-          ),
+          shadow: widget.shadow ?? defaultShadow,
+          elevation: widget.elevation,
+          child: content,
         ),
       ),
     );
   }
-}
-
-class _TargetInformation {
-  const _TargetInformation({
-    required this.size,
-    required this.target,
-    required this.offsetToTarget,
-  });
-
-  factory _TargetInformation.from(BuildContext? context) {
-    final RenderObject? box = context?.findRenderObject();
-    if (box is! RenderBox) return _TargetInformation.zero;
-    final Size size = box.size;
-    final Offset target = box.localToGlobal(Offset.zero);
-    // TODO: Instead of this, change the alignment on
-    // [CompositedTransformFollower]. That way we can allow a user configurable
-    // alignment on where the tooltip ends up.
-    final Offset offsetToTarget = Offset(
-      -target.dx + size.width / 2,
-      -target.dy + size.height / 2,
-    );
-    return _TargetInformation(
-      size: size,
-      target: target,
-      offsetToTarget: offsetToTarget,
-    );
-  }
-
-  final Size size;
-
-  final Offset target;
-
-  final Offset offsetToTarget;
-
-  static const _TargetInformation zero = _TargetInformation(
-    size: Size.zero,
-    target: Offset.zero,
-    offsetToTarget: Offset.zero,
-  );
 }
