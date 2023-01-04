@@ -32,6 +32,12 @@ class RenderBoxPosition {
   final Size size;
   final Rect rect;
 
+  static const RenderBoxPosition zero = RenderBoxPosition._(
+    offset: Offset.zero,
+    size: Size.zero,
+    rect: Rect.zero,
+  );
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
