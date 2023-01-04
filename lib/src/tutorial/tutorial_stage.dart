@@ -345,12 +345,41 @@ class _TutorialStageState extends State<TutorialStage>
     _currentContentOverlay!.markNeedsBuild();
   }
 
+  void _didFirstBuildCurrentContent() {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      final TutorialContent? content = _currentContent;
+      if (content == null) {
+        assert(
+          false,
+          'Cannot schedule TutorialContent.didFirstBuild() because it is null',
+        );
+        return;
+      }
+      final Object? debugCheckForReturnedFuture =
+          content.didFirstBuild() as dynamic;
+      assert(() {
+        if (debugCheckForReturnedFuture is Future) {
+          throw FlutterError.fromParts(<DiagnosticsNode>[
+            ErrorSummary(
+              '${content.runtimeType}.didFirstBuild() returned a Future.',
+            ),
+            ErrorDescription(
+              'TutorialContent.didFirstBuild() must be a void method without an `async` keyword.',
+            ),
+          ]);
+        }
+        return true;
+      }());
+    });
+  }
+
   void _upsertCurrentContentOverlay() {
     if (_currentContentOverlay == null) {
       _insertCurrentContentOverlay();
     } else {
       _updateCurrentContentOverlay();
     }
+    _didFirstBuildCurrentContent();
   }
 
   void _removeCurrentContentOverlay() {
@@ -509,11 +538,12 @@ class _TutorialStageState extends State<TutorialStage>
     TutorialStateType type,
     Object? originalNextIdentifier,
   ) {
+    if (_onChange == null) return originalNextIdentifier;
     final TutorialState nextState = TutorialState(
       type: type,
       identifier: originalNextIdentifier,
     );
-    return _onChange?.call(nextState) ?? originalNextIdentifier;
+    return _onChange!(nextState);
   }
 
   bool _isOngoing = false;

@@ -13,6 +13,9 @@ abstract class TutorialContent with Diagnosticable {
 
   Widget build(BuildContext context);
 
+  /// This is called once after [build]
+  void didFirstBuild() {}
+
   /// {@template tutorial_stage.TutorialContent.finish}
   /// Finishes the content
   ///
