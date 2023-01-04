@@ -35,6 +35,10 @@ class RenderAlignRect extends RenderRectShiftedBox {
     ));
   }
 
+  BoxConstraints computeConstraints(BoxConstraints constraints) {
+    return constraints.loosen();
+  }
+
   // Copied from [RenderPositionedBox.performLayout]
   @override
   void performLayout() {
@@ -43,7 +47,7 @@ class RenderAlignRect extends RenderRectShiftedBox {
     final bool shrinkWrapHeight = _shouldShrinkWrapHeight(constraints);
 
     if (child != null) {
-      child!.layout(constraints.loosen(), parentUsesSize: true);
+      child!.layout(computeConstraints(constraints), parentUsesSize: true);
       size = constraints.constrain(Size(
         shrinkWrapWidth ? child!.size.width : double.infinity,
         shrinkWrapHeight ? child!.size.height : double.infinity,
