@@ -2,7 +2,7 @@ part of tutorial;
 
 abstract class TutorialController {
   /// Current tutorial state.
-  ValueStream<TutorialStateUpdate> get state;
+  Stream<TutorialStateUpdate> get state;
 
   /// Starts tutorial from content with identifier of [at].
   void start({Object? at});

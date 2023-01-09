@@ -388,17 +388,22 @@ class _TutorialStageState extends State<TutorialStage>
   }
 
   // Tutorial State
-  final BehaviorSubject<TutorialStateUpdate> _stateController =
-      BehaviorSubject<TutorialStateUpdate>();
+  final StreamController<TutorialStateUpdate> _stateController =
+      StreamController<TutorialStateUpdate>.broadcast();
   @override
-  ValueStream<TutorialStateUpdate> get state => _stateController.stream;
-  TutorialStateType? _currentState;
+  Stream<TutorialStateUpdate> get state => _stateController.stream;
+  TutorialStateUpdate? _lastState;
+
+  void _dispatchStateUpdate(TutorialStateUpdate value) {
+    _lastState = value;
+    _stateController.add(value);
+  }
 
   TutorialStateUpdate _createStateUpdate(
     TutorialStateType type,
     TutorialContent content,
   ) {
-    final TutorialState? previous = state.valueOrNull?.current;
+    final TutorialState? previous = _lastState?.current;
     final TutorialState current = TutorialState(
       type: type,
       identifier: content.identifier,
@@ -412,8 +417,7 @@ class _TutorialStageState extends State<TutorialStage>
   void _updateState(TutorialStateType type, {TutorialContent? forContent}) {
     final TutorialContent? content = forContent ?? _currentContent;
     if (content == null) return;
-    if (kDebugMode) _currentState = type;
-    _stateController.add(_createStateUpdate(type, content));
+    _dispatchStateUpdate(_createStateUpdate(type, content));
   }
 
   void _removeContent() {
@@ -648,8 +652,7 @@ class _TutorialStageState extends State<TutorialStage>
     _currentContentIndex = -1;
     _changeContent();
     final TutorialContent content = _contents[lastContentIndex];
-    if (kDebugMode) _currentState = TutorialStateType.finished;
-    _stateController.add(_createStateUpdate(
+    _dispatchStateUpdate(_createStateUpdate(
       TutorialStateType.finished,
       content,
     ));
@@ -680,7 +683,6 @@ class _TutorialStageState extends State<TutorialStage>
     _currentContent = null;
     _currentContentIndex = -1;
     _contents = const <TutorialContent>[];
-    if (kDebugMode) _currentState = null;
     _onChange = null;
     _destroyStage();
     setState(() => _isOngoing = false);
@@ -691,9 +693,9 @@ class _TutorialStageState extends State<TutorialStage>
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties
-      ..add(DiagnosticsProperty<TutorialStateType>(
+      ..add(DiagnosticsProperty<TutorialState>(
         'currentState',
-        _currentState,
+        _lastState?.current,
         ifNull: 'initialized',
         missingIfNull: false,
       ))
