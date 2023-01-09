@@ -290,7 +290,7 @@ class _DialogTutorialContentBuilderState
   Widget build(BuildContext context) {
     return TheTooltip(
       key: _tooltipKey,
-      preferredDirection: widget.direction,
+      direction: widget.direction,
       content: const Padding(
         padding: EdgeInsets.all(8.0),
         child: Text(
