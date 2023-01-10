@@ -131,7 +131,8 @@ class RenderSimpleTooltip extends RenderAlignRect {
         _textDirection = textDirection,
         _backgroundColor = backgroundColor,
         _shadow = shadow,
-        _elevation = elevation;
+        _elevation = elevation,
+        _resolvedMargin = margin.resolve(textDirection);
 
   AxisDirection get direction => _direction;
   AxisDirection _direction;
@@ -141,11 +142,13 @@ class RenderSimpleTooltip extends RenderAlignRect {
     markNeedsLayout();
   }
 
+  EdgeInsets _resolvedMargin;
   EdgeInsetsGeometry get margin => _margin;
   EdgeInsetsGeometry _margin;
   set margin(EdgeInsetsGeometry value) {
     if (_margin == value) return;
     _margin = value;
+    _resolvedMargin = value.resolve(textDirection);
     markNeedsLayout();
   }
 
@@ -194,6 +197,7 @@ class RenderSimpleTooltip extends RenderAlignRect {
   set textDirection(TextDirection value) {
     if (_textDirection == value) return;
     _textDirection = value;
+    _resolvedMargin = margin.resolve(value);
     markNeedsLayout();
   }
 
@@ -346,19 +350,18 @@ class RenderSimpleTooltip extends RenderAlignRect {
     required Offset alignedOffset,
     required Size childSize,
   }) {
-    final EdgeInsets margin = this.margin.resolve(textDirection);
     final Size size = constraints.biggest;
     final double dx = math.max(
-      margin.left,
+      _resolvedMargin.left,
       math.min(
-        size.width - margin.right - childSize.width,
+        size.width - _resolvedMargin.right - childSize.width,
         alignedOffset.dx,
       ),
     );
     final double dy = math.max(
-      margin.top,
+      _resolvedMargin.top,
       math.min(
-        size.height - margin.bottom - childSize.height,
+        size.height - _resolvedMargin.bottom - childSize.height,
         alignedOffset.dy,
       ),
     );
@@ -367,9 +370,8 @@ class RenderSimpleTooltip extends RenderAlignRect {
 
   @override
   BoxConstraints computeConstraints(BoxConstraints constraints) {
-    final EdgeInsets resolvedMargin = margin.resolve(textDirection);
     final BoxConstraints loosenConstraints =
-        constraints.loosen().deflate(resolvedMargin);
+        constraints.loosen().deflate(_resolvedMargin);
     switch (direction) {
       case AxisDirection.up:
       case AxisDirection.down:
