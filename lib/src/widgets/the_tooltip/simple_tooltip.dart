@@ -441,14 +441,30 @@ class RenderSimpleTooltip extends RenderAlignRect {
     context.paintChild(child, childOffset);
   }
 
-  Offset get _tailOffset {
-    final double xAlignmentMultiplier = -0.5 * alignment.x;
-    final double yAlignmentMultiplier = -0.5 * alignment.y;
-
-    return Offset(
-      rect.center.dx - xAlignmentMultiplier * rect.size.width,
-      rect.center.dy - yAlignmentMultiplier * rect.size.height,
-    );
+  Offset _getTailOffset(Rect childRect) {
+    final double tailLength = this.tailLength;
+    switch (direction) {
+      case AxisDirection.up:
+        return childRect.bottomCenter.translate(
+          0,
+          tailLength + _resolvedMargin.bottom,
+        );
+      case AxisDirection.right:
+        return childRect.centerLeft.translate(
+          -(tailLength + _resolvedMargin.left),
+          0,
+        );
+      case AxisDirection.down:
+        return childRect.topCenter.translate(
+          0,
+          -(tailLength + _resolvedMargin.top),
+        );
+      case AxisDirection.left:
+        return childRect.centerRight.translate(
+          tailLength + _resolvedMargin.right,
+          0,
+        );
+    }
   }
 
   // Copied from [RenderPositionedTooltip._paintTail] in
@@ -460,7 +476,7 @@ class RenderSimpleTooltip extends RenderAlignRect {
     // Clockwise around the triangle starting at the target center
     // point + offset
     double x = 0, y = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0;
-    final Offset target = _tailOffset;
+    final Offset target = _getTailOffset(rect);
 
     switch (direction) {
       case AxisDirection.up:
