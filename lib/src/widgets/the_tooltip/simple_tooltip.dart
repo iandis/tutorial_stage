@@ -442,26 +442,37 @@ class RenderSimpleTooltip extends RenderAlignRect {
   }
 
   Offset _getTailOffset(Rect childRect) {
-    final double tailLength = this.tailLength;
+    final double xAlignmentMultiplier = -0.5 * alignment.x;
+    final double yAlignmentMultiplier = -0.5 * alignment.y;
+
+    final Offset tailOffset = Offset(
+      rect.center.dx - xAlignmentMultiplier * rect.size.width,
+      rect.center.dy - yAlignmentMultiplier * rect.size.height,
+    );
+
     switch (direction) {
       case AxisDirection.up:
-        return childRect.bottomCenter.translate(
+        final double childBottomY = childRect.bottomCenter.dy;
+        return tailOffset.translate(
           0,
-          tailLength + _resolvedMargin.bottom,
-        );
-      case AxisDirection.right:
-        return childRect.centerLeft.translate(
-          -(tailLength + _resolvedMargin.left),
-          0,
+          childBottomY - (tailOffset.dy - tailLength - _resolvedMargin.bottom),
         );
       case AxisDirection.down:
-        return childRect.topCenter.translate(
+        final double childTopY = childRect.topCenter.dy;
+        return tailOffset.translate(
           0,
-          -(tailLength + _resolvedMargin.top),
+          childTopY - (tailOffset.dy + tailLength + _resolvedMargin.top),
+        );
+      case AxisDirection.right:
+        final double childLeftX = childRect.centerLeft.dx;
+        return tailOffset.translate(
+          childLeftX - (tailOffset.dx + tailLength + _resolvedMargin.left),
+          0,
         );
       case AxisDirection.left:
-        return childRect.centerRight.translate(
-          tailLength + _resolvedMargin.right,
+        final double childRightX = childRect.centerRight.dx;
+        return tailOffset.translate(
+          childRightX - (tailOffset.dx - tailLength - _resolvedMargin.right),
           0,
         );
     }
