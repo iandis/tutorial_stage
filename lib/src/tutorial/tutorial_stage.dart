@@ -1,11 +1,19 @@
 part of tutorial;
 
 /// The callback before changing tutorial content. This will be called for every
-/// [TutorialStateType] except [TutorialStateType.finished] and [TutorialStateType.paused]
+/// [TutorialStateType.started], [TutorialStateType.movedNext],
+/// and [TutorialStateType.movedPrevious].
 ///
 /// The callback should return a non-nullable identifier to change the next tutorial
 /// content
 typedef TutorialStateChangeCallback = Object? Function(TutorialState nextState);
+
+/// The callback before calling [TutorialContent.start]. This will be called for every
+/// [TutorialStateType.started], [TutorialStateType.movedNext],
+/// and [TutorialStateType.movedPrevious].
+typedef TutorialPrestartCallback = FutureOr<void> Function(
+  TutorialState currentState,
+);
 
 typedef StageBuilder = Widget Function(BuildContext context, Widget stage);
 
@@ -84,6 +92,7 @@ class TutorialStage extends StatefulWidget {
     required List<TutorialContent> contents,
     StageBuilder? builder,
     TutorialStateChangeCallback? onChange,
+    TutorialPrestartCallback? onPrestart,
   }) {
     assert(() {
       final Set<Object> identifiers = <Object>{};
@@ -102,7 +111,7 @@ class TutorialStage extends StatefulWidget {
     }());
     final _TutorialStageState? state = _maybeOf(context);
     assert(state != null, 'No TutorialStage found in the widget tree');
-    return state!.._initContents(contents, builder, onChange);
+    return state!.._initContents(contents, builder, onChange, onPrestart);
   }
 
   static _TutorialStageState? _maybeOf(
@@ -277,6 +286,7 @@ class _TutorialStageState extends State<TutorialStage>
     List<TutorialContent> contents,
     StageBuilder? builder,
     TutorialStateChangeCallback? onChange,
+    TutorialPrestartCallback? onPrestart,
   ) {
     _debugCheckDisposed();
     if (_currentContent != null) {
@@ -289,6 +299,7 @@ class _TutorialStageState extends State<TutorialStage>
     _contents = contents;
     _stageBuilder = builder;
     _onChange = onChange;
+    _onPrestart = onPrestart;
     _prepareStage();
   }
 
@@ -471,10 +482,14 @@ class _TutorialStageState extends State<TutorialStage>
     TutorialStateType type,
   ) async {
     await _finishCurrentContent();
+    if (!mounted) return;
     _didFinishCurrentContent();
     if (_contents.isEmpty) return;
     _currentContentIndex = onChangeIndex(_currentContentIndex);
+    await _prestartContent(type);
+    if (!mounted) return;
     await _changeContent();
+    if (!mounted) return;
     _updateState(type);
   }
 
@@ -502,7 +517,7 @@ class _TutorialStageState extends State<TutorialStage>
   /// * 1 -> [index] must be greater than [currentIndex]
   /// * -1 -> [index] must be less than [currentIndex]
   ///
-  /// Returns null if [index] is null.
+  /// Returns null if [index] is null or equal to [currentIndex].
   /// Otherwise, returns [index] if it is valid, throws an error when invalid.
   @pragma('vm:prefer-inline')
   static int? _validateIdentifierIndex(
@@ -510,7 +525,7 @@ class _TutorialStageState extends State<TutorialStage>
     int currentIndex,
     int expectedIndexDifference,
   ) {
-    if (index == null) return null;
+    if (index == null || index == currentIndex) return null;
     assert(
       expectedIndexDifference == 1 || expectedIndexDifference == -1,
       'Invalid expectedIndexDifference: $expectedIndexDifference. '
@@ -537,7 +552,6 @@ class _TutorialStageState extends State<TutorialStage>
   }
 
   TutorialStateChangeCallback? _onChange;
-
   Object? _getChangedNextIdentifier(
     TutorialStateType type,
     Object? originalNextIdentifier,
@@ -548,6 +562,22 @@ class _TutorialStageState extends State<TutorialStage>
       identifier: originalNextIdentifier,
     );
     return _onChange!(nextState);
+  }
+
+  TutorialPrestartCallback? _onPrestart;
+  Future<void> _prestartContent(TutorialStateType currentType) async {
+    if (_onPrestart == null ||
+        _contents.isEmpty ||
+        _currentContentIndex == -1) {
+      return;
+    }
+    final Object? currentIdentifier =
+        _contents[_currentContentIndex].identifier;
+    final TutorialState currentState = TutorialState(
+      type: currentType,
+      identifier: currentIdentifier,
+    );
+    await _onPrestart!(currentState);
   }
 
   bool _isOngoing = false;
@@ -564,11 +594,13 @@ class _TutorialStageState extends State<TutorialStage>
       _isOngoing = true;
       _childEntry?.markNeedsBuild();
     });
+    final int nextIdentifierIndex = _getIdentifierIndex(at) ?? 0;
+    final Object? nextIdentifier = _contents[nextIdentifierIndex].identifier;
     final Completer<void> startCompleter = Completer<void>();
-    SchedulerBinding.instance.addPostFrameCallback((_) {
+    SchedulerBinding.instance.addPostFrameCallback((_) async {
       final Object? identifier = _getChangedNextIdentifier(
         TutorialStateType.started,
-        at,
+        nextIdentifier,
       );
       _beginChangeContent(
         (_) => _getIdentifierIndex(identifier) ?? 0,
@@ -588,9 +620,12 @@ class _TutorialStageState extends State<TutorialStage>
     if (_isChanging) return;
 
     _toggleIsChanging();
+    final int nextIdentifierIndex =
+        _getIdentifierIndex(to) ?? _currentContentIndex + 1;
+    final Object? nextIdentifier = _contents[nextIdentifierIndex].identifier;
     final Object? identifier = _getChangedNextIdentifier(
       TutorialStateType.movedNext,
-      to,
+      nextIdentifier,
     );
     await _beginChangeContent(
       (int currentIndex) =>
@@ -630,9 +665,12 @@ class _TutorialStageState extends State<TutorialStage>
     }
 
     _toggleIsChanging();
+    final int nextIdentifierIndex =
+        _getIdentifierIndex(to) ?? _currentContentIndex - 1;
+    final Object? nextIdentifier = _contents[nextIdentifierIndex].identifier;
     final Object? identifier = _getChangedNextIdentifier(
       TutorialStateType.movedPrevious,
-      to,
+      nextIdentifier,
     );
     await _beginChangeContent(
       (int currentIndex) =>
@@ -670,6 +708,7 @@ class _TutorialStageState extends State<TutorialStage>
     _didFinishCurrentContent();
     _finish();
     _onChange = null;
+    _onPrestart = null;
     _destroyStage();
     setState(() => _isOngoing = false);
     _toggleIsChanging();
@@ -684,6 +723,7 @@ class _TutorialStageState extends State<TutorialStage>
     _currentContentIndex = -1;
     _contents = const <TutorialContent>[];
     _onChange = null;
+    _onPrestart = null;
     _destroyStage();
     setState(() => _isOngoing = false);
     _updateChild(isEnabled: true);
