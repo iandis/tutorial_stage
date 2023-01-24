@@ -210,7 +210,7 @@ class _TutorialStageState extends State<TutorialStage>
     _debugCheckStageReadiness();
     Widget result;
     if (!_isStageReady) {
-      result = _child;
+      result = KeyedSubtree(key: _childKey, child: widget.child);
     } else {
       final Widget stage = Overlay(
         key: _overlayKey,
@@ -265,14 +265,11 @@ class _TutorialStageState extends State<TutorialStage>
   bool _isChildEnabled = true;
   OverlayEntry? _childEntry;
 
-  late final Widget _child = KeyedSubtree(
-    key: GlobalKey(),
-    child: widget.child,
-  );
+  final GlobalKey _childKey = GlobalKey();
   Widget _buildChild(BuildContext context) {
     return IgnorePointer(
       ignoring: !_isChildEnabled,
-      child: _child,
+      child: KeyedSubtree(key: _childKey,child: widget.child),
     );
   }
 
