@@ -97,7 +97,10 @@ class _MyHomePageState extends State<MyHomePage> {
       'Previous Tutorial: ${update.previous?.identifier}\n'
       'Current Tutorial: ${update.current.identifier}',
     );
-    if (update.current.type == TutorialStateType.finished) {
+  }
+
+  void _onPrestartTutorialContent(TutorialState currentState) {
+    if (currentState.type == TutorialStateType.finished) {
       TutorialStage.of(context).reset();
     }
   }
@@ -110,6 +113,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _startTutorial() {
     TutorialStage.build(
       context: context,
+      onPrestart: _onPrestartTutorialContent,
       contents: <TutorialContent>[
         _ButtonTutorialContent(),
         _BodyTutorialContent(),
@@ -125,7 +129,7 @@ class _MyHomePageState extends State<MyHomePage> {
       MaterialPageRoute(builder: (_) => const NextPage()),
     );
     // Wait for the transition animation to finish so that it
-    // doesn't mess up the target widget position  
+    // doesn't mess up the target widget position
     await Future<void>.delayed(const Duration(milliseconds: 300));
     TutorialStage.of(context).next();
   }
