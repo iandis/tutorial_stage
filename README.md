@@ -35,90 +35,89 @@ enum TutorialIdentifier {
 }
 
 class TutorialContentExample extends StatelessWidget {
-    const TutorialContentExample({
-        super.key,
-        required this.key,
-        required this.text,
-    });
+  const TutorialContentExample({
+    super.key,
+    required this.key,
+    required this.text,
+  });
 
-    final GlobalKey key;
-    final String text;
+  final GlobalKey key;
+  final String text;
 
-    @override
-    Widget build(BuildContext context) {
-        final Rect rect = key.boxPosition!.rect.withPadding(const EdgeInsets.all(4));
-        return SpotlightStage(
+  @override
+  Widget build(BuildContext context) {
+    final Rect rect = key.boxPosition!.rect.withPadding(const EdgeInsets.all(4));
+    return SpotlightStage(
+      rect: rect,
+      borderRadius: const BorderRadius.all(Radius.circular(4)),
+        children: <Widget>[
+          AlignRect(
             rect: rect,
-            borderRadius: const BorderRadius.all(Radius.circular(4)),
-            children: <Widget>[
-                AlignRect(
-                    rect: rect,
-                    alignment: const Alignment(0.0, 2.0),
-                    child: Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: ElevatedButton(
-                            onPressed: () => TutorialStage.of(context).next(),
-                            child: Text(text),
-                        ),
-                    ),
-                ),
-            ],
-        );
-    }
+            alignment: const Alignment(0.0, 2.0),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: ElevatedButton(
+                onPressed: () => TutorialStage.of(context).next(),
+                child: Text(text),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class ButtonTutorialContent extends AnimatedTutorialContent {
-    ButtonTutorialContent(this._buttonKey)
+  ButtonTutorialContent(this._buttonKey)
       : super(identifier: TutorialIdentifier.button);
 
-    final GlobalKey _buttonKey;
+  final GlobalKey _buttonKey;
 
-    @override
-    Widget buildContent(BuildContext context) {
-        return TutorialContentExample(
-            key: _buttonKey,
-            text: 'Button',
-        );
-    }
+  @override
+  Widget buildContent(BuildContext context) {
+    return TutorialContentExample(
+      key: _buttonKey,
+      text: 'Button',
+    );
+  }
 }
 
-
 class TitleTutorialContent extends AnimatedTutorialContent {
-    TitleTutorialContent(this._titleKey)
+  TitleTutorialContent(this._titleKey)
       : super(identifier: TutorialIdentifier.title);
 
-    final GlobalKey _titleKey;
+  final GlobalKey _titleKey;
 
-    @override
-    Widget buildContent(BuildContext context) {
-        return TutorialContentExample(
-            key: _titleKey,
-            text: 'Title',
-        );
-    }
+  @override
+  Widget buildContent(BuildContext context) {
+    return TutorialContentExample(
+      key: _titleKey,
+      text: 'Title',
+    );
+  }
 }
 
 class CounterTutorialContent extends AnimatedTutorialContent {
-    CounterTutorialContent(this._counterKey)
+  CounterTutorialContent(this._counterKey)
       : super(identifier: TutorialIdentifier.counter);
 
-    final GlobalKey _counterKey;
+  final GlobalKey _counterKey;
 
-    @override
-    Future<void> start() async {
-        await Scrollable.ensureVisible(
-            _counterKey.currentContext!,
-            duration: const Duration(milliseconds: 300),
-        );
-    }
+  @override
+  Future<void> start() async {
+    await Scrollable.ensureVisible(
+      _counterKey.currentContext!,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
 
-    @override
-    Widget buildContent(BuildContext context) {
-        return TutorialContentExample(
-            key: _counterKey,
-            text: 'Counter',
-        );
-    }
+  @override
+  Widget buildContent(BuildContext context) {
+    return TutorialContentExample(
+      key: _counterKey,
+      text: 'Counter',
+    );
+  }
 }
 ```
 
