@@ -1,5 +1,5 @@
 name: tutorial_stage
-description: A new Flutter package project.
+description: A Flutter package for creating highly customized in-app tutorials.
 version: 0.0.1
 repository: https://www.github.com/iandis/tutorial_stage
 issue_tracker: https://www.github.com/iandis/tutorial_stage/issues

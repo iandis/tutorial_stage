@@ -1,6 +1,6 @@
 ## TutorialStage
 
-A Flutter package for creating highly customized tutorials.
+A Flutter package for creating highly customized in-app tutorials.
 
 ## Getting Started
 
